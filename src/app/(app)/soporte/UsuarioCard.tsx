@@ -14,6 +14,7 @@ export type UsuarioSoporte = {
   debe_cambiar_clave: boolean;
   ultimo_acceso: string | null;
   bloqueado_hasta: string | null;
+  empresa_id: string | null;
 };
 
 function generarClave() {
@@ -91,7 +92,8 @@ export default function UsuarioCard({ u }: { u: UsuarioSoporte }) {
             Usuario: <b className="font-semibold text-slate-700">{u.usuario ?? '—'}</b>
             {u.email_contacto && <> · {u.email_contacto}</>}
           </p>
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-400"><Clock className="h-3.5 w-3.5" /> Último acceso: {fechaHora(u.ultimo_acceso)}</p>
+          {/* El formato de fecha puede variar un carácter entre el servidor y el navegador (espacios de la hora); se avisa a React que no es un error. */}
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-400" suppressHydrationWarning><Clock className="h-3.5 w-3.5" /> Último acceso: {fechaHora(u.ultimo_acceso)}</p>
         </div>
       </div>
 
