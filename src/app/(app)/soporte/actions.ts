@@ -65,6 +65,16 @@ export async function cambiarEstadoEmpresa(id: string, activo: boolean) {
   revalidatePath('/soporte');
 }
 
+// Solo se puede eliminar una empresa sin cuentas de usuario (la función SQL lo exige); es irreversible.
+export async function eliminarEmpresa(_prev: Resultado, formData: FormData): Promise<Resultado> {
+  const { supabase } = await requireSoporte();
+  const id = String(formData.get('id') ?? '');
+  const { error } = await supabase.rpc('soporte_eliminar_empresa', { p_id: id });
+  if (error) return { error: error.message || 'No se pudo eliminar la empresa.' };
+  revalidatePath('/soporte');
+  return { ok: 'Empresa eliminada.' };
+}
+
 // Crea la cuenta en Supabase Auth (con permisos de administrador, sin que la persona se registre)
 // y, si todo sale bien, la asigna a su empresa y la deja activa con una contraseña temporal.
 export async function crearCuenta(_prev: Resultado, formData: FormData): Promise<Resultado> {
@@ -81,9 +91,15 @@ export async function crearCuenta(_prev: Resultado, formData: FormData): Promise
   if (!nombre) return { error: 'Escribe el nombre de la persona.' };
   if (clave.length < CLAVE_MINIMA) return { error: `La contraseña temporal debe tener al menos ${CLAVE_MINIMA} caracteres.` };
 
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return { error: 'No se pudo crear la cuenta: falta configurar el servidor (SUPABASE_SERVICE_ROLE_KEY).' };
+  }
+
   let nuevoId: string;
   try {
-    const admin = createAdminClient();
     const { data, error } = await admin.auth.admin.createUser({
       email: `${usuario}@${DOMINIO_USUARIOS}`,
       password: clave,
@@ -95,11 +111,13 @@ export async function crearCuenta(_prev: Resultado, formData: FormData): Promise
       if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
         return { error: 'Ese nombre de usuario ya está en uso. Elige otro.' };
       }
+      console.error('[crearCuenta] auth.admin.createUser devolvió un error:', error);
       return { error: 'No se pudo crear la cuenta.' };
     }
     nuevoId = data.user.id;
-  } catch {
-    return { error: 'No se pudo crear la cuenta: falta configurar el servidor (SUPABASE_SERVICE_ROLE_KEY).' };
+  } catch (e) {
+    console.error('[crearCuenta] error inesperado al crear el usuario:', e);
+    return { error: 'No se pudo crear la cuenta por un error inesperado del servidor. Avisa para revisarlo (quedó el detalle en los registros).' };
   }
 
   const { error: e2 } = await supabase.rpc('soporte_completar_cuenta', {

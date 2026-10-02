@@ -1,10 +1,10 @@
 'use client';
-import { useActionState, useState } from 'react';
-import { Building2, Dices, Plus, ShieldCheck, ShieldOff, UserPlus } from 'lucide-react';
+import { useActionState, useEffect, useState } from 'react';
+import { Building2, Dices, Plus, ShieldCheck, ShieldOff, Trash2, UserPlus } from 'lucide-react';
 import Aviso from '@/components/Aviso';
 import ConfirmForm from '@/components/ConfirmForm';
 import UsuarioCard, { type UsuarioSoporte } from './UsuarioCard';
-import { cambiarEstadoEmpresa, crearCuenta } from './actions';
+import { cambiarEstadoEmpresa, crearCuenta, eliminarEmpresa } from './actions';
 
 export type EmpresaSoporte = { id: string; nombre: string; activo: boolean; cantidad_usuarios: number };
 
@@ -53,6 +53,36 @@ function NuevaCuenta({ empresaId, alCrear }: { empresaId: string; alCrear: () =>
   );
 }
 
+// Solo se ofrece eliminar cuando la empresa no tiene ninguna cuenta (la función SQL lo exige igual); es irreversible.
+function EliminarEmpresa({ id, nombre }: { id: string; nombre: string }) {
+  const [res, accion, pendiente] = useActionState(eliminarEmpresa, null);
+  const [confirmando, setConfirmando] = useState(false);
+
+  useEffect(() => {
+    if (res?.ok && typeof window !== 'undefined') window.location.reload();
+  }, [res]);
+
+  if (!confirmando) {
+    return (
+      <button type="button" onClick={() => setConfirmando(true)} className="btn-danger btn-sm">
+        <Trash2 className="h-4 w-4" /> Eliminar
+      </button>
+    );
+  }
+
+  return (
+    <form action={accion} className="flex flex-col items-end gap-1.5">
+      <input type="hidden" name="id" value={id} />
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-slate-500">¿Eliminar &quot;{nombre}&quot;? No se puede deshacer.</span>
+        <button type="button" onClick={() => setConfirmando(false)} className="btn-secondary btn-sm" disabled={pendiente}>Cancelar</button>
+        <button className="btn-danger btn-sm" disabled={pendiente}><Trash2 className="h-4 w-4" /> {pendiente ? 'Eliminando…' : 'Sí, eliminar'}</button>
+      </div>
+      {res?.error && <p role="alert" className="text-xs font-medium text-red-600">{res.error}</p>}
+    </form>
+  );
+}
+
 export default function EmpresaCard({ empresa, usuarios }: { empresa: EmpresaSoporte; usuarios: UsuarioSoporte[] }) {
   const [abierta, setAbierta] = useState(false);
   return (
@@ -81,6 +111,7 @@ export default function EmpresaCard({ empresa, usuarios }: { empresa: EmpresaSop
               <button className="btn btn-sm"><ShieldCheck className="h-4 w-4" /> Activar</button>
             </form>
           )}
+          {empresa.cantidad_usuarios === 0 && <EliminarEmpresa id={empresa.id} nombre={empresa.nombre} />}
         </div>
       </div>
 
