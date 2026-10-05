@@ -14,7 +14,7 @@ function formatear(crudo: string) {
   return conPuntos + parteDecimal;
 }
 
-export default function CampoMonto({ name, label, defaultValue, placeholder, required, span, onValor }: {
+export default function CampoMonto({ name, label, defaultValue, placeholder, required, span, onValor, valorExterno }: {
   name: string;
   label: string;
   defaultValue?: number | string | null;
@@ -23,10 +23,19 @@ export default function CampoMonto({ name, label, defaultValue, placeholder, req
   span?: string;
   /** Opcional: avisa el valor numérico actual (o null si está vacío) cada vez que cambia, para cálculos en el formulario que lo usa. */
   onValor?: (v: number | null) => void;
+  /** Opcional: cuando otro campo del formulario calcula este valor por su cuenta (ej.: un % sobre otro monto),
+   *  pasalo aquí para que se muestre ya formateado con puntos de miles (en vez de un número "pelado"). */
+  valorExterno?: number | null;
 }) {
   const inicial = defaultValue === null || defaultValue === undefined || defaultValue === ''
     ? '' : formatear(String(defaultValue).replace('.', ','));
   const [texto, setTexto] = useState(inicial);
+
+  useEffect(() => {
+    if (valorExterno === undefined) return;
+    setTexto(valorExterno === null ? '' : formatear(String(valorExterno).replace('.', ',')));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valorExterno]);
 
   function alCambiar(e: React.ChangeEvent<HTMLInputElement>) {
     const el = e.target;

@@ -275,11 +275,7 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
           <label className="label">Comisión pactada % (opcional)</label>
           <input className="input" type="number" step="any" min="0" inputMode="decimal" placeholder="Ej.: 3" value={comisionPct} onChange={(e) => calcularComisionPct(e.target.value)} />
         </div>
-        <div>
-          <label className="label">Comisión pactada (monto)</label>
-          <input className="input" name="comision_pactada" type="number" step="any" min="0" inputMode="decimal"
-            value={comisionMonto ?? ''} onChange={(e) => setComisionMonto(e.target.value === '' ? null : Number(e.target.value))} />
-        </div>
+        <CampoMonto name="comision_pactada" label="Comisión pactada (monto)" defaultValue={p.comision_pactada} placeholder="0" valorExterno={comisionMonto} />
         <p className="text-xs text-slate-400 sm:col-span-2 lg:col-span-3 lg:-mt-2">Lo que acordaste cobrarle al dueño cuando se venda o alquile. Queda guardado acá y se sugiere solo al registrar la operación.</p>
         {area('notas', 'Notas internas')}
       </Seccion>
