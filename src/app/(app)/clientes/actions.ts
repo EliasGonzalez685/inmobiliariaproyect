@@ -10,9 +10,11 @@ export async function guardarCliente(id: string | null, _prev: ResultadoCliente,
   const { data } = await supabase.auth.getClaims();
   if (!data?.claims?.sub) redirect('/login');
 
+  const tipo = String(formData.get('tipo') ?? 'propietario');
   const datos = {
     nombre: String(formData.get('nombre') ?? '').trim(),
-    tipo: String(formData.get('tipo') ?? 'propietario'),
+    tipo,
+    tipo_otro: tipo === 'otro' ? txt(formData.get('tipo_otro'))?.slice(0, 60) ?? null : null,
     documento: txt(formData.get('documento')),
     telefono: txt(formData.get('telefono')),
     email: txt(formData.get('email')),

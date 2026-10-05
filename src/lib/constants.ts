@@ -57,6 +57,12 @@ export function etiquetaEstado(p: ConTipoEstado) {
   return ESTADOS_PROPIEDAD[p.estado as keyof typeof ESTADOS_PROPIEDAD] ?? '';
 }
 
+/** Tipo de cliente: si es "Otro" y se escribió uno, muestra lo escrito. */
+export function etiquetaCliente(c: { tipo?: string | null; tipo_otro?: string | null }) {
+  if (c.tipo === 'otro' && c.tipo_otro) return c.tipo_otro;
+  return TIPOS_CLIENTE[c.tipo as keyof typeof TIPOS_CLIENTE] ?? '';
+}
+
 // ───────── Operaciones (ventas, alquileres, reservas…) ─────────
 export const TIPOS_OPERACION = { venta: 'Venta', alquiler: 'Alquiler', reserva: 'Reserva', otro: 'Otro' } as const;
 export const ESTADOS_OPERACION = { concretada: 'Concretada', en_curso: 'En curso', cancelada: 'Cancelada' } as const;

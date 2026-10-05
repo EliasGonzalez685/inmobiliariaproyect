@@ -2,7 +2,7 @@ import Link from '@/components/LinkSeguro';
 import { Building2, Mail, Phone, Plus, Search, Users } from 'lucide-react';
 import { requireProfile } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { TIPOS_CLIENTE } from '@/lib/constants';
+import { etiquetaCliente } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ const gradiente = (s: string) => GRADIENTES[[...s].reduce((a, c) => a + c.charCo
 export default async function Clientes({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams;
   const supabase = await createClient();
-  let query = supabase.from('clientes').select('id, nombre, tipo, telefono, email, documento, propiedades(id)').order('nombre');
+  let query = supabase.from('clientes').select('id, nombre, tipo, tipo_otro, telefono, email, documento, propiedades(id)').order('nombre');
   if (q) {
     const s = q.replace(/[%,()]/g, ' ').trim();
     query = query.or(`nombre.ilike.%${s}%,documento.ilike.%${s}%,telefono.ilike.%${s}%,email.ilike.%${s}%`);
@@ -44,7 +44,7 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
                   <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${gradiente(c.nombre)} text-lg font-bold text-white shadow-soft`}>{c.nombre[0].toUpperCase()}</span>
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-slate-900">{c.nombre}</p>
-                    <p className="truncate text-xs text-slate-500">{TIPOS_CLIENTE[c.tipo as keyof typeof TIPOS_CLIENTE]}{c.documento && ` · ${c.documento}`}</p>
+                    <p className="truncate text-xs text-slate-500">{etiquetaCliente(c)}{c.documento && ` · ${c.documento}`}</p>
                   </div>
                 </Link>
                 <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
