@@ -1,16 +1,11 @@
 import Link from '@/components/LinkSeguro';
-import { Building2, CircleAlert, CircleCheck, Hammer, Handshake, KeyRound, Plus, Wrench } from 'lucide-react';
+import { Building2, CircleAlert, CircleCheck, ClipboardList, Handshake, KeyRound, Plus, Wrench } from 'lucide-react';
 import { requireProfile } from '@/lib/auth';
 import Donut from '@/components/Donut';
-import { ESTADOS_PROPIEDAD, ESTADO_HEX, OPERACION_COLOR, etiquetaOperacion } from '@/lib/constants';
+import { ESTADOS_PEDIDO, ESTADOS_PROPIEDAD, ESTADO_HEX, ESTADO_PEDIDO_COLOR, OPERACION_COLOR, etiquetaOperacion, etiquetaTipo } from '@/lib/constants';
 import { formatoFecha, formatoMonto, saludoFecha } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
-
-const ESTADO_MANT: Record<string, string> = {
-  en_proceso: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
-  pendiente: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-};
 
 export default async function Panel() {
   const { supabase, profile } = await requireProfile();
@@ -18,14 +13,14 @@ export default async function Panel() {
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Asuncion' });
   const inicioMes = `${hoy.slice(0, 7)}-01`;
 
-  const [{ data: resumen }, { data: props }, { data: recientes }, { data: delMes }, { data: mant }, { data: conFotos }] = await Promise.all([
+  const [{ data: resumen }, { data: props }, { data: recientes }, { data: delMes }, { data: pedidosPendientes }, { data: conFotos }] = await Promise.all([
     supabase.from('resumen_patrimonio').select('*').single(),
     supabase.from('propiedades').select('id, estado, cliente_id, precio'),
     supabase.from('operaciones').select('id, tipo, tipo_otro, estado, fecha, monto, moneda, propiedad_id, propiedad_titulo, propiedades(titulo)')
       .order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(5),
     supabase.from('operaciones').select('tipo, monto, moneda').eq('estado', 'concretada').gte('fecha', inicioMes),
-    supabase.from('mantenimientos').select('id, titulo, estado, fecha, propiedad_id, propiedades(titulo)')
-      .neq('estado', 'completado').order('fecha').limit(6),
+    supabase.from('pedidos').select('id, cliente_nombre, tipo, tipo_otro, ubicacion, presupuesto, moneda, estado, created_at')
+      .in('estado', ['pendiente', 'en_proceso']).order('created_at', { ascending: false }).limit(6),
     supabase.from('propiedad_fotos').select('propiedad_id'),
   ]);
 
@@ -137,24 +132,29 @@ export default async function Panel() {
       </div>
 
       <section className="card">
-        <h2 className="mb-2">Mantenimientos abiertos</h2>
-        {mant && mant.length > 0 ? (
+        <div className="mb-2 flex items-center justify-between">
+          <h2>Pedidos pendientes</h2>
+          <Link href="/pedidos" className="text-sm font-semibold text-brand-600 hover:underline">Ver todos</Link>
+        </div>
+        {pedidosPendientes && pedidosPendientes.length > 0 ? (
           <ul className="divide-y divide-slate-100">
-            {mant.map((m) => {
-              const prop = m.propiedades as unknown as { titulo: string } | null;
-              return (
-                <li key={m.id} className="flex items-center gap-3 py-3">
-                  <span className="icon-chip bg-orange-50 text-orange-600"><Hammer className="h-5 w-5" /></span>
-                  <div className="min-w-0 flex-1">
-                    <Link href={`/propiedades/${m.propiedad_id}?tab=mantenimiento`} className="block truncate text-sm font-semibold text-slate-800 hover:text-brand-700">{m.titulo}</Link>
-                    <p className="truncate text-xs text-slate-500">{prop?.titulo} · {formatoFecha(m.fecha)}</p>
-                  </div>
-                  <span className={`badge shrink-0 ${ESTADO_MANT[m.estado]}`}>{m.estado === 'en_proceso' ? 'En proceso' : 'Pendiente'}</span>
-                </li>
-              );
-            })}
+            {pedidosPendientes.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 py-3">
+                <span className="icon-chip bg-violet-50 text-violet-600"><ClipboardList className="h-5 w-5" /></span>
+                <div className="min-w-0 flex-1">
+                  <Link href={`/pedidos/${p.id}`} className="block truncate text-sm font-semibold text-slate-800 hover:text-brand-700">{p.cliente_nombre} · {etiquetaTipo(p)}</Link>
+                  <p className="truncate text-xs text-slate-500">{p.ubicacion ?? 'Sin zona'}{p.presupuesto !== null ? ` · ${formatoMonto(p.presupuesto, p.moneda)}` : ''}</p>
+                </div>
+                <span className={`badge shrink-0 ${ESTADO_PEDIDO_COLOR[p.estado]}`}>{ESTADOS_PEDIDO[p.estado as keyof typeof ESTADOS_PEDIDO]}</span>
+              </li>
+            ))}
           </ul>
-        ) : <p className="py-6 text-center text-sm text-slate-500">No hay intervenciones abiertas.</p>}
+        ) : (
+          <div className="py-6 text-center">
+            <p className="text-sm text-slate-500">No hay pedidos pendientes.</p>
+            <Link href="/pedidos/nuevo" className="btn btn-sm mt-3"><Plus className="h-4 w-4" /> Registrar pedido</Link>
+          </div>
+        )}
       </section>
     </div>
   );
