@@ -1,10 +1,11 @@
 'use client';
 import { useRef, useState } from 'react';
 import Link from '@/components/LinkSeguro';
-import { AlertCircle, Banknote, Camera, FileText, Landmark, MapPin, Ruler, Save, Upload } from 'lucide-react';
-import { CATEGORIAS_FOTO, ESTADOS_PROPIEDAD, MONEDAS, OPERACIONES, SERVICIOS, TIPOS_PROPIEDAD } from '@/lib/constants';
+import { AlertCircle, Banknote, Camera, FileBadge, FileText, Landmark, MapPin, Ruler, Save, Upload, X } from 'lucide-react';
+import { CATEGORIAS_FOTO, ESTADOS_PROPIEDAD, MONEDAS, OPERACIONES, SERVICIOS, TIPOS_DOCUMENTO, TIPOS_PROPIEDAD } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { MAX_VIDEO_MB, subirMedia, type EstadoArchivo } from '@/lib/media';
+import { MAX_DOCUMENTO_MB, subirDocumentos } from '@/lib/documentos';
 import ListaArchivos from '@/components/ListaArchivos';
 import CampoMonto from '@/components/CampoMonto';
 import { llamar } from '@/lib/llamar';
@@ -20,9 +21,40 @@ function Seccion({ icon: Icon, titulo, tono, children }: { icon: typeof Ruler; t
   );
 }
 
+// Lista simple de los documentos elegidos (sin miniatura, a diferencia de las fotos): nombre, tamaño y estado de cada uno.
+function ListaDocumentosElegidos({ archivos, estados, alQuitar }: { archivos: File[]; estados: EstadoArchivo[]; alQuitar?: (i: number) => void }) {
+  if (!archivos.length) return null;
+  const mb = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString('es-PY', { maximumFractionDigits: 1 })} MB`;
+  return (
+    <ul className="space-y-2">
+      {archivos.map((f, i) => {
+        const e = estados[i] ?? { estado: 'esperando' as const, progreso: 0 };
+        return (
+          <li key={`${f.name}-${i}`} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200/70">
+            <span className="icon-chip !h-9 !w-9 shrink-0 bg-white text-slate-500 shadow-soft"><FileText className="h-4 w-4" /></span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-slate-700">{f.name}</p>
+              <p className={`text-xs ${e.estado === 'error' ? 'font-medium text-red-600' : e.estado === 'listo' ? 'font-medium text-emerald-600' : 'text-slate-400'}`}>
+                {e.estado === 'esperando' && `Se sube al crear la propiedad · ${mb(f.size)}`}
+                {e.estado === 'subiendo' && 'Subiendo…'}
+                {e.estado === 'listo' && 'Subido correctamente'}
+                {e.estado === 'error' && (e.mensaje ?? 'No se pudo subir')}
+              </p>
+            </div>
+            {e.estado === 'esperando' && alQuitar && (
+              <button type="button" onClick={() => alQuitar(i)} aria-label={`Quitar ${f.name}`} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-600"><X className="h-4 w-4" /></button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; clientes: { id: string; nombre: string }[] }) {
   const p: P = propiedad ?? {};
   const inputArchivos = useRef<HTMLInputElement>(null);
+  const inputDocs = useRef<HTMLInputElement>(null);
   const [tipo, setTipo] = useState<string>(p.tipo ?? 'casa');
   const [estado, setEstado] = useState<string>(p.estado ?? 'disponible');
   // Superficie del terreno: se puede cargar en m² y/o en hectáreas (1 ha = 10.000 m²); se guarda en m².
@@ -43,7 +75,9 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
   const [progreso, setProgreso] = useState('');
   const [archivos, setArchivos] = useState<File[]>([]);
   const [estados, setEstados] = useState<EstadoArchivo[]>([]);
-  const [pendiente, setPendiente] = useState<{ id: string; errores: string[] } | null>(null);
+  const [archivosDoc, setArchivosDoc] = useState<File[]>([]);
+  const [estadosDoc, setEstadosDoc] = useState<EstadoArchivo[]>([]);
+  const [pendiente, setPendiente] = useState<{ id: string; errores: string[]; destino: string } | null>(null);
 
   async function enviar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -55,19 +89,39 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
     if (res.ir) { window.location.assign(res.ir); return; }
     if (res.error || !res.id) { setError(res.error ?? 'No se pudo guardar la propiedad.'); setEnviando(false); return; }
 
-    if (!p.id && archivos.length) {
-      setEstados(archivos.map(() => ({ estado: 'esperando' as const, progreso: 0 })));
-      const { errores } = await subirMedia(
-        createClient(), res.id, archivos,
-        { categoria: String(fd.get('media_categoria') ?? 'estado_general'), fecha_toma: String(fd.get('media_fecha')) },
-        {
-          yaTienePortada: false,
-          alAvanzar: (h, t) => setProgreso(h < t ? `Subiendo archivo ${h + 1} de ${t}…` : ''),
-          alArchivo: (i, e) => setEstados((prev) => prev.map((x, j) => (j === i ? e : x))),
-        },
-      );
-      if (errores.length) { setPendiente({ id: res.id, errores }); setEnviando(false); return; }
-      setTimeout(() => window.location.assign(`/propiedades/${res.id}?tab=fotos`), 700); // se alcanza a ver todo "listo"
+    if (!p.id && (archivos.length || archivosDoc.length)) {
+      const supabase = createClient();
+      const erroresTotales: string[] = [];
+
+      if (archivos.length) {
+        setEstados(archivos.map(() => ({ estado: 'esperando' as const, progreso: 0 })));
+        const { errores } = await subirMedia(
+          supabase, res.id, archivos,
+          { categoria: String(fd.get('media_categoria') ?? 'estado_general'), fecha_toma: String(fd.get('media_fecha')) },
+          {
+            yaTienePortada: false,
+            alAvanzar: (h, t) => setProgreso(h < t ? `Subiendo foto/video ${h + 1} de ${t}…` : ''),
+            alArchivo: (i, e) => setEstados((prev) => prev.map((x, j) => (j === i ? e : x))),
+          },
+        );
+        erroresTotales.push(...errores);
+      }
+
+      if (archivosDoc.length) {
+        setEstadosDoc(archivosDoc.map(() => ({ estado: 'esperando' as const, progreso: 0 })));
+        const { errores } = await subirDocumentos(
+          supabase, res.id, archivosDoc, String(fd.get('doc_tipo') ?? 'otro'),
+          {
+            alAvanzar: (h, t) => setProgreso(h < t ? `Subiendo documento ${h + 1} de ${t}…` : ''),
+            alArchivo: (i, e) => setEstadosDoc((prev) => prev.map((x, j) => (j === i ? e : x))),
+          },
+        );
+        erroresTotales.push(...errores);
+      }
+
+      const destino = archivos.length ? 'fotos' : 'documentos';
+      if (erroresTotales.length) { setPendiente({ id: res.id, errores: erroresTotales, destino }); setEnviando(false); return; }
+      setTimeout(() => window.location.assign(`/propiedades/${res.id}?tab=${destino}`), 700); // se alcanza a ver todo "listo"
       return;
     }
     window.location.assign(res.operacionId ? `/propiedades/${res.id}?nueva=${res.operacionId}` : `/propiedades/${res.id}`);
@@ -79,6 +133,13 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
     const nuevos = Array.from(lista);
     if (inputArchivos.current) inputArchivos.current.value = '';
     setArchivos((prev) => [...prev, ...nuevos]);
+  }
+
+  function agregarArchivosDoc(lista: FileList | null) {
+    if (!lista || lista.length === 0) return;
+    const nuevos = Array.from(lista);
+    if (inputDocs.current) inputDocs.current.value = '';
+    setArchivosDoc((prev) => [...prev, ...nuevos]);
   }
 
   const campo = (name: string, label: string, opts: { type?: string; step?: string; placeholder?: string; span?: string; inputMode?: 'decimal' | 'numeric' | 'text'; required?: boolean } = {}) => (
@@ -229,6 +290,30 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
         </section>
       )}
 
+      {!p.id && (
+        <section className="card">
+          <div className="mb-1 flex items-center gap-3"><span className="icon-chip !h-9 !w-9 bg-sky-50 text-sky-600"><FileBadge className="h-[18px] w-[18px]" /></span><h2>Documentos (opcional)</h2></div>
+          <p className="mb-4 text-sm text-slate-500">Escrituras, planos, contratos… Puedes subirlos ahora o más tarde desde la propiedad. Hasta {MAX_DOCUMENTO_MB} MB cada uno.</p>
+          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-brand-200 bg-brand-50/50 px-4 py-7 text-center transition hover:border-brand-400 hover:bg-brand-50">
+            <span className="icon-chip bg-white text-brand-600 shadow-soft"><Upload className="h-5 w-5" /></span>
+            <span className="font-semibold text-slate-800">{archivosDoc.length ? 'Agregar más documentos' : 'Toca para elegir documentos'}</span>
+            <span className="text-xs text-slate-500">PDF, imágenes, Word…</span>
+            <input ref={inputDocs} type="file" multiple className="sr-only" onChange={(e) => agregarArchivosDoc(e.target.files)} />
+          </label>
+          {archivosDoc.length > 0 && (
+            <>
+              <div className="mt-4">
+                <ListaDocumentosElegidos archivos={archivosDoc} estados={estadosDoc} alQuitar={enviando ? undefined : (i) => setArchivosDoc(archivosDoc.filter((_, j) => j !== i))} />
+              </div>
+              <div className="mt-4">
+                <label className="label">Tipo de documento (se aplica a todos los que elegiste)</label>
+                <select className="input" name="doc_tipo" defaultValue="otro">{Object.entries(TIPOS_DOCUMENTO).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
       {error && (
         <p role="alert" className="flex items-start gap-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-600 ring-1 ring-red-100"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}</p>
       )}
@@ -237,7 +322,7 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
         <div role="alert" className="space-y-2 rounded-2xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-200">
           <p className="font-semibold">La propiedad se creó, pero algunos archivos no se subieron:</p>
           {pendiente.errores.map((m, i) => <p key={i}>{m}</p>)}
-          <Link href={`/propiedades/${pendiente.id}?tab=fotos`} className="btn btn-sm mt-1">Ir a la propiedad y volver a subirlos</Link>
+          <Link href={`/propiedades/${pendiente.id}?tab=${pendiente.destino}`} className="btn btn-sm mt-1">Ir a la propiedad y volver a subirlos</Link>
         </div>
       )}
 
