@@ -166,10 +166,6 @@ export default function ListaPropiedades({ propiedades, inicial }: { propiedades
                     <Dato icon={Bath} valor={p.banos} />
                     <Dato icon={Car} valor={p.cocheras} />
                   </div>
-                  <p className="flex items-center gap-2 text-xs text-slate-500">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-700">{(p.cliente ?? '?')[0]}</span>
-                    <span className="truncate">{p.cliente ?? 'Sin propietario asignado'}</span>
-                  </p>
                 </div>
               </Link>
             );
