@@ -1,9 +1,10 @@
 'use client';
 import { useMemo, useState } from 'react';
 import Link from '@/components/LinkSeguro';
-import { ClipboardList, MapPin, Phone, Plus, Ruler, Search, Sparkles, User, X } from 'lucide-react';
+import { ClipboardList, Loader2, MapPin, Phone, Plus, Ruler, Search, Sparkles, User, X } from 'lucide-react';
 import { ESTADOS_PEDIDO, ESTADO_PEDIDO_COLOR, etiquetaTipo } from '@/lib/constants';
 import { formatoMonto } from '@/lib/format';
+import { llamar } from '@/lib/llamar';
 import { coincidencias, type PropiedadParaCoincidencia } from '@/lib/pedidos';
 
 export type PedidoItem = {
@@ -18,7 +19,18 @@ const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
 export default function PanelPedidos({ pedidos, disponibles }: { pedidos: PedidoItem[]; disponibles: PropiedadParaCoincidencia[] }) {
   const [q, setQ] = useState('');
   const [estado, setEstado] = useState('');
+  const [cambiando, setCambiando] = useState<string | null>(null);
   const texto = sinTildes(q.trim());
+
+  // Cambia el estado de un pedido sin tener que entrar a su ficha: para cuando solo hace falta
+  // marcarlo como "en proceso", "cumplido", etc. mientras se mira la lista.
+  async function cambiarEstado(id: string, nuevo: string) {
+    if (cambiando) return;
+    setCambiando(id);
+    const res = await llamar('cambiarEstadoPedido', [id, nuevo]);
+    if (res.error) { alert(res.error); setCambiando(null); return; }
+    window.location.reload();
+  }
 
   const visibles = useMemo(() => pedidos.filter((p) =>
     (!estado || p.estado === estado) &&
@@ -83,6 +95,15 @@ export default function PanelPedidos({ pedidos, disponibles }: { pedidos: Pedido
                     <Sparkles className="h-3.5 w-3.5" /> {match.length} propiedad{match.length === 1 ? '' : 'es'} disponible{match.length === 1 ? '' : 's'} podría{match.length === 1 ? '' : 'n'} servirle
                   </div>
                 )}
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
+                  <span className="mr-0.5 text-xs text-slate-400">Cambiar a:</span>
+                  {Object.entries(ESTADOS_PEDIDO).filter(([v]) => v !== p.estado).map(([v, l]) => (
+                    <button key={v} type="button" disabled={cambiando === p.id} onClick={() => cambiarEstado(p.id, v)}
+                      className="pill !px-2.5 !py-1 text-xs disabled:opacity-50">
+                      {cambiando === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : l}
+                    </button>
+                  ))}
+                </div>
               </li>
             );
           })}
