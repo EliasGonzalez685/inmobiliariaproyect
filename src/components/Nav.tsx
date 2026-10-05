@@ -1,7 +1,7 @@
 'use client';
 import Link from '@/components/LinkSeguro';
 import { usePathname } from 'next/navigation';
-import { Building2, Handshake, LayoutDashboard, LifeBuoy, LogOut, Plus, UserRound, Users } from 'lucide-react';
+import { Building2, ClipboardList, Handshake, LayoutDashboard, LifeBuoy, LogOut, Plus, UserRound, Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import Logo from './Logo';
 
@@ -11,6 +11,7 @@ const enlacesEquipo: Enlace[] = [
   { href: '/', label: 'Panel', icon: LayoutDashboard },
   { href: '/propiedades', label: 'Propiedades', icon: Building2 },
   { href: '/clientes', label: 'Clientes', icon: Users },
+  { href: '/pedidos', label: 'Pedidos', icon: ClipboardList },
   { href: '/operaciones', label: 'Operaciones', icon: Handshake },
 ];
 const enlaceSoporte: Enlace = { href: '/soporte', label: 'Soporte', icon: LifeBuoy };
@@ -19,15 +20,18 @@ const enlaceCuenta: Enlace = { href: '/cuenta', label: 'Mi cuenta', icon: UserRo
 function titulo(pathname: string, links: Enlace[]) {
   if (pathname.startsWith('/propiedades/')) return 'Propiedad';
   if (pathname.startsWith('/clientes/')) return 'Cliente';
+  if (pathname.startsWith('/pedidos/')) return 'Pedido';
   if (pathname.startsWith('/operaciones/')) return 'Operación';
+  if (pathname.startsWith(enlaceCuenta.href)) return enlaceCuenta.label;
   return links.find((l) => (l.href === '/' ? pathname === '/' : pathname.startsWith(l.href)))?.label ?? '';
 }
 
 export default function Nav({ nombre, detalle, rol, bloqueado }: { nombre: string; detalle: string; rol: 'super_admin' | 'usuario'; bloqueado: boolean }) {
   // El super administrador solo ve soporte; el personal ve el trabajo diario.
-  // Si debe cambiar su contraseña, solo puede ir a "Mi cuenta".
+  // Si debe cambiar su contraseña, solo puede ir a "Mi cuenta" (ahí sigue siendo la única opción).
   const trabajo = rol === 'super_admin' ? [enlaceSoporte] : bloqueado ? [] : enlacesEquipo;
-  const links = [...trabajo, enlaceCuenta];
+  // "Mi cuenta" queda aparte, junto al botón de cerrar sesión, en vez de mezclada con el resto.
+  const links = bloqueado ? [enlaceCuenta] : trabajo;
   const pathname = usePathname();
   const activo = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
   const inicial = (nombre[0] ?? '?').toUpperCase();
@@ -54,17 +58,22 @@ export default function Nav({ nombre, detalle, rol, bloqueado }: { nombre: strin
             </Link>
           ))}
         </nav>
-        <div className="mt-auto rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-violet-500 text-sm font-bold text-white">{inicial}</span>
+        <div className="mt-auto space-y-1 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+          <Link href={enlaceCuenta.href}
+            className={`flex items-center gap-3 rounded-xl p-1.5 transition ${activo(enlaceCuenta.href) ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-violet-500 text-sm font-bold text-white">{inicial}</span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-white">{nombre}</p>
               <p className="truncate text-xs text-slate-400">{detalle}</p>
             </div>
-            <button onClick={salir} title="Cerrar sesión" aria-label="Cerrar sesión" className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white">
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
+          </Link>
+          <Link href={enlaceCuenta.href}
+            className={`flex items-center gap-3 rounded-xl px-2 py-2 text-sm font-medium transition ${activo(enlaceCuenta.href) ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+            <UserRound className="h-4 w-4" /> Mi cuenta
+          </Link>
+          <button onClick={salir} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white">
+            <LogOut className="h-4 w-4" /> Cerrar sesión
+          </button>
         </div>
       </aside>
 
@@ -74,9 +83,15 @@ export default function Nav({ nombre, detalle, rol, bloqueado }: { nombre: strin
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-500 text-sm font-bold text-white">{inicial}</span>
           <span className="text-[15px] font-bold tracking-tight text-slate-900">{titulo(pathname, links)}</span>
         </div>
-        <button onClick={salir} aria-label="Cerrar sesión" className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100">
-          <LogOut className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <Link href={enlaceCuenta.href} aria-label="Mi cuenta"
+            className={`flex h-10 w-10 items-center justify-center rounded-xl ${activo(enlaceCuenta.href) ? 'text-brand-600' : 'text-slate-500'} hover:bg-slate-100`}>
+            <UserRound className="h-5 w-5" />
+          </Link>
+          <button onClick={salir} aria-label="Cerrar sesión" className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100">
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {mostrarFab && (

@@ -43,6 +43,15 @@ export const TIPOS_MANTENIMIENTO = { preventivo: 'Preventivo', correctivo: 'Corr
 export const ESTADOS_MANTENIMIENTO = { pendiente: 'Pendiente', en_proceso: 'En proceso', completado: 'Completado' } as const;
 export const SERVICIOS = ['Agua corriente', 'Energía eléctrica', 'Internet', 'Pavimento', 'Alumbrado público', 'Recolección de basura'];
 
+// ───────── Pedidos (lo que piden los clientes) ─────────
+export const ESTADOS_PEDIDO = { pendiente: 'Pendiente', en_proceso: 'En proceso', cumplido: 'Cumplido', cancelado: 'Cancelado' } as const;
+export const ESTADO_PEDIDO_COLOR: Record<string, string> = {
+  pendiente: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  en_proceso: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200',
+  cumplido: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  cancelado: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
+};
+
 type ConTipoEstado = { tipo?: string | null; tipo_otro?: string | null; estado?: string | null; estado_otro?: string | null };
 
 /** Nombre del tipo: si es "Otro" y se escribió uno, muestra lo escrito. */

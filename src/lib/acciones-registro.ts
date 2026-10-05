@@ -4,6 +4,7 @@ import {
   guardarPropiedad, cambiarEstadoPropiedad, eliminarPropiedad,
   agregarMantenimiento, cambiarEstadoMantenimiento, eliminarMantenimiento,
 } from '@/app/(app)/propiedades/actions';
+import { guardarPedido, cambiarEstadoPedido, eliminarPedido } from '@/app/(app)/pedidos/actions';
 
 type A = any[];
 
@@ -22,4 +23,7 @@ export const REGISTRO: Record<string, (a: A, fd: FormData) => Promise<unknown>> 
   agregarMantenimiento: async (a, fd) => { await agregarMantenimiento(String(a[0]), fd); return {}; },
   cambiarEstadoMantenimiento: async (a) => { await cambiarEstadoMantenimiento(String(a[0]), String(a[1]), String(a[2])); return {}; },
   eliminarMantenimiento: async (a) => { await eliminarMantenimiento(String(a[0]), String(a[1])); return {}; },
+  guardarPedido: (a, fd) => guardarPedido(a[0] ?? null, null, fd),
+  cambiarEstadoPedido: async (a) => { await cambiarEstadoPedido(String(a[0]), String(a[1])); return {}; },
+  eliminarPedido: (a) => eliminarPedido(String(a[0])),
 };
