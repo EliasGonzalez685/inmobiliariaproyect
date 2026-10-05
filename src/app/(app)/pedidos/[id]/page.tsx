@@ -46,6 +46,12 @@ export default async function Pedido({ params }: { params: Promise<{ id: string 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-800">{p.titulo}</p>
                     <p className="truncate text-xs text-slate-500">{[p.barrio, p.ciudad].filter(Boolean).join(', ') || p.direccion}{p.precio && ` · ${formatoMonto(p.precio, p.moneda)}`}</p>
+                    {(p.precioCercano || p.zonaCoincide) && (
+                      <p className="mt-1 flex gap-1.5">
+                        {p.precioCercano && <span className="badge !px-1.5 !py-0.5 text-[10px] bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">Precio cercano</span>}
+                        {p.zonaCoincide && <span className="badge !px-1.5 !py-0.5 text-[10px] bg-sky-50 text-sky-700 ring-1 ring-sky-200">Misma zona</span>}
+                      </p>
+                    )}
                   </div>
                   <ChevronRight className="h-4 w-4 text-slate-300" />
                 </Link>
