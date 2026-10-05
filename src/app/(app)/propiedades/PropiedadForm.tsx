@@ -55,6 +55,10 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
   const p: P = propiedad ?? {};
   const inputArchivos = useRef<HTMLInputElement>(null);
   const inputDocs = useRef<HTMLInputElement>(null);
+  const refServicios = useRef<HTMLDivElement>(null);
+  const marcarServicios = (marcar: boolean) => {
+    refServicios.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((el) => { el.checked = marcar; });
+  };
   const [tipo, setTipo] = useState<string>(p.tipo ?? 'casa');
   const [estado, setEstado] = useState<string>(p.estado ?? 'disponible');
   // Superficie del terreno: se puede cargar en m² y/o en hectáreas (1 ha = 10.000 m²); se guarda en m².
@@ -243,11 +247,17 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
         {campo('banos', 'Baños', { type: 'number', inputMode: 'numeric' })}
         {campo('cocheras', 'Cocheras', { type: 'number', inputMode: 'numeric' })}
         {campo('anio_construccion', 'Año de construcción', { type: 'number', inputMode: 'numeric' })}
-        {area('linderos', 'Linderos')}
-        {area('mejoras', 'Mejoras realizadas')}
+        {area('linderos', 'Descripciones')}
+        {area('mejoras', 'Obs. extras')}
         <div className="sm:col-span-2 lg:col-span-3">
-          <label className="label">Servicios</label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-center justify-between">
+            <label className="label !mb-0">Servicios</label>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => marcarServicios(true)} className="text-xs font-semibold text-brand-600 hover:underline">Marcar todos</button>
+              <button type="button" onClick={() => marcarServicios(false)} className="text-xs font-semibold text-slate-400 hover:underline">Quitar todos</button>
+            </div>
+          </div>
+          <div ref={refServicios} className="mt-1.5 flex flex-wrap gap-2">
             {SERVICIOS.map((s) => (
               <label key={s} className="cursor-pointer">
                 <input type="checkbox" name="servicios" value={s} defaultChecked={(p.servicios ?? []).includes(s)} className="peer sr-only" />
