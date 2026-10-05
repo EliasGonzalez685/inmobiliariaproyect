@@ -1,4 +1,4 @@
-import { guardarOperacion, eliminarOperacion } from '@/app/(app)/operaciones/actions';
+import { guardarOperacion, eliminarOperacion, cambiarComisionPagada } from '@/app/(app)/operaciones/actions';
 import { guardarCliente, eliminarCliente } from '@/app/(app)/clientes/actions';
 import {
   guardarPropiedad, cambiarEstadoPropiedad, eliminarPropiedad,
@@ -15,6 +15,7 @@ type A = any[];
 export const REGISTRO: Record<string, (a: A, fd: FormData) => Promise<unknown>> = {
   guardarOperacion: (a, fd) => guardarOperacion(a[0] ?? null, null, fd),
   eliminarOperacion: (a) => eliminarOperacion(String(a[0]), a[1] ? String(a[1]) : undefined),
+  cambiarComisionPagada: async (a) => { await cambiarComisionPagada(String(a[0]), a[1] === true || a[1] === 'true'); return {}; },
   guardarCliente: (a, fd) => guardarCliente(a[0] ?? null, null, fd),
   eliminarCliente: (a) => eliminarCliente(String(a[0])),
   guardarPropiedad: (a, fd) => guardarPropiedad(a[0] ?? null, fd),

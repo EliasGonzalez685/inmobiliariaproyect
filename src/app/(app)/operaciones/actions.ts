@@ -41,6 +41,9 @@ export async function guardarOperacion(id: string | null, _prev: ResultadoOperac
   const esAlquiler = tipo === 'alquiler';
   if (esAlquiler && inicio && fin && fin < inicio) return { error: 'El fin del contrato no puede ser anterior al inicio.' };
 
+  const comisionPagada = formData.get('comision_pagada') === '1';
+  const comisionFechaPago = comisionPagada ? (txt(formData.get('comision_fecha_pago')) ?? new Date().toISOString().slice(0, 10)) : null;
+
   // Copia del título y del nombre: el historial se conserva aunque luego se elimine la propiedad o el cliente.
   const [{ data: prop }, { data: cli }] = await Promise.all([
     propiedadId ? supabase.from('propiedades').select('titulo').eq('id', propiedadId).single() : Promise.resolve({ data: null }),
@@ -57,6 +60,8 @@ export async function guardarOperacion(id: string | null, _prev: ResultadoOperac
     monto,
     moneda: String(formData.get('moneda') ?? 'PYG'),
     comision,
+    comision_pagada: comisionPagada,
+    comision_fecha_pago: comisionFechaPago,
     cliente_id: clienteId,
     cliente_nombre: cli?.nombre ?? null,
     fecha_inicio: esAlquiler ? inicio : null,
@@ -78,6 +83,14 @@ export async function guardarOperacion(id: string | null, _prev: ResultadoOperac
 
   const volver = txt(formData.get('volver'));
   return { ir: volver && UUID.test(volver) ? `/propiedades/${volver}?tab=operaciones` : '/operaciones' };
+}
+
+export async function cambiarComisionPagada(id: string, pagada: boolean) {
+  const supabase = await db();
+  const { error } = await supabase.from('operaciones')
+    .update({ comision_pagada: pagada, comision_fecha_pago: pagada ? new Date().toISOString().slice(0, 10) : null })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
 }
 
 export async function eliminarOperacion(id: string, volverAPropiedad?: string): Promise<{ ir: string }> {

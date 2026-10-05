@@ -1,5 +1,5 @@
 import Link from '@/components/LinkSeguro';
-import { CalendarRange, CircleAlert, Handshake, Pencil, Percent, Plus, Trash2, User } from 'lucide-react';
+import { CalendarRange, CheckCircle2, CircleAlert, Handshake, Pencil, Percent, Plus, Trash2, User } from 'lucide-react';
 import { requireProfile } from '@/lib/auth';
 import ConfirmForm from '@/components/ConfirmForm';
 import { ESTADOS_OPERACION, ESTADO_OPERACION_COLOR, OPERACION_COLOR, etiquetaOperacion } from '@/lib/constants';
@@ -41,12 +41,22 @@ export default async function OperacionesTab({ propiedadId }: { propiedadId: str
                   {o.tipo === 'alquiler' && o.fecha_inicio && <span>Contrato {formatoFecha(o.fecha_inicio)}{o.fecha_fin ? ` → ${formatoFecha(o.fecha_fin)}` : ''}</span>}
                   {o.forma_pago && <span>{o.forma_pago}</span>}
                 </p>
+                {o.comision !== null && (
+                  <span className={`badge mt-2 ${o.comision_pagada ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'}`}>
+                    <CheckCircle2 className="h-3.5 w-3.5" /> {o.comision_pagada ? `Comisión pagada${o.comision_fecha_pago ? ` · ${formatoFecha(o.comision_fecha_pago)}` : ''}` : 'Comisión pendiente de pago'}
+                  </span>
+                )}
                 {o.estado !== 'cancelada' && (o.comision === null || !o.forma_pago) && (
                   <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700"><CircleAlert className="h-3.5 w-3.5" /> Faltan datos: {[o.comision === null && 'comisión', !o.forma_pago && 'forma de pago'].filter(Boolean).join(' y ')}</p>
                 )}
                 {o.notas && <p className="mt-1.5 text-xs text-slate-400">{o.notas}</p>}
-                <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
                   <Link href={`/operaciones/${o.id}/editar?volver=${propiedadId}`} className="btn-secondary btn-sm"><Pencil className="h-4 w-4" /> Editar</Link>
+                  {o.comision !== null && (
+                    <ConfirmForm accion="cambiarComisionPagada" args={[o.id, !o.comision_pagada]} className={o.comision_pagada ? 'btn-secondary btn-sm' : 'btn btn-sm'}>
+                      <CheckCircle2 className="h-4 w-4" /> {o.comision_pagada ? 'Marcar pendiente' : 'Marcar comisión pagada'}
+                    </ConfirmForm>
+                  )}
                   <ConfirmForm accion="eliminarOperacion" args={[o.id, propiedadId]} mensaje="¿Eliminar esta operación? No se puede deshacer." className="btn-danger btn-sm"><Trash2 className="h-4 w-4" /> Eliminar</ConfirmForm>
                 </div>
               </li>

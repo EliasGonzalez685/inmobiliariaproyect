@@ -31,6 +31,7 @@ export default function OperacionForm({ operacion, propiedades, clientes, propie
   const [monto, setMonto] = useState<string>(o.monto != null ? String(Number(o.monto)) : '');
   const [comision, setComision] = useState<string>(o.comision != null ? String(Number(o.comision)) : '');
   const [porcentaje, setPorcentaje] = useState('');
+  const [comisionPagada, setComisionPagada] = useState<boolean>(o.comision_pagada ?? false);
 
   const calcularComision = (pct: string, base: string) => {
     const p = Number(pct.replace(',', '.'));
@@ -116,6 +117,16 @@ export default function OperacionForm({ operacion, propiedades, clientes, propie
           <label className="label">Forma de pago</label>
           <input className="input" name="forma_pago" placeholder="Ej.: Contado, transferencia, cuotas…" defaultValue={o.forma_pago ?? ''} />
         </div>
+        <label className="flex cursor-pointer items-center gap-2.5 rounded-xl bg-emerald-50/60 px-3.5 py-3 text-sm font-medium text-slate-700 ring-1 ring-emerald-100 sm:col-span-2 lg:col-span-1">
+          <input type="checkbox" name="comision_pagada" value="1" checked={comisionPagada} onChange={(e) => setComisionPagada(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-emerald-600" />
+          Comisión pagada
+        </label>
+        {comisionPagada && (
+          <div>
+            <label className="label">Fecha de pago</label>
+            <input className="input" type="date" name="comision_fecha_pago" defaultValue={o.comision_fecha_pago ?? new Date().toLocaleDateString('en-CA', { timeZone: 'America/Asuncion' })} />
+          </div>
+        )}
       </Seccion>
 
       {tipo === 'alquiler' && (

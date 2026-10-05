@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from '@/components/LinkSeguro';
-import { Banknote, CalendarRange, ChevronLeft, CircleAlert, ChevronRight, Handshake, Pencil, Percent, Plus, Search, Trash2, TrendingUp, User, X } from 'lucide-react';
+import { Banknote, CalendarRange, CheckCircle2, ChevronLeft, CircleAlert, ChevronRight, Handshake, Pencil, Percent, Plus, Search, Trash2, TrendingUp, User, X } from 'lucide-react';
 import ConfirmForm from '@/components/ConfirmForm';
 import BotonesExportar from '@/components/BotonesExportar';
 import { ESTADOS_OPERACION, ESTADO_OPERACION_COLOR, OPERACION_COLOR, OPERACION_HEX, TIPOS_OPERACION, etiquetaOperacion } from '@/lib/constants';
@@ -9,7 +9,8 @@ import { formatoFecha, formatoMonto, formatoMontoCompacto } from '@/lib/format';
 
 export type OperacionItem = {
   id: string; propiedad_id: string | null; propiedad: string | null; tipo: string; tipo_otro: string | null; estado: string; fecha: string;
-  monto: number | null; moneda: string; comision: number | null; cliente: string | null; fecha_inicio: string | null; fecha_fin: string | null;
+  monto: number | null; moneda: string; comision: number | null; comision_pagada: boolean; comision_fecha_pago: string | null;
+  cliente: string | null; fecha_inicio: string | null; fecha_fin: string | null;
   forma_pago: string | null; notas: string | null;
 };
 
@@ -107,6 +108,7 @@ export default function PanelOperaciones({ operaciones }: { operaciones: Operaci
     const mayor = conMonto.reduce<OperacionItem | null>((a, o) => (!a || (o.monto ?? 0) > (a.monto ?? 0) ? o : a), null);
     const comisiones = suma(enMoneda.map((o) => o.comision));
     const conComision = enMoneda.filter((o) => o.comision !== null);
+    const comisionesPendientes = suma(enMoneda.filter((o) => o.comision !== null && !o.comision_pagada).map((o) => o.comision));
 
     // Meses considerados para el promedio mensual
     const y = Number(hoy.slice(0, 4)); const m = Number(hoy.slice(5, 7));
@@ -139,7 +141,7 @@ export default function PanelOperaciones({ operaciones }: { operaciones: Operaci
 
     const ventas = concretadas.filter((o) => o.tipo === 'venta').length;
     const alquileres = concretadas.filter((o) => o.tipo === 'alquiler').length;
-    return { lista, concretadas, otraMoneda, enCurso, total, promedio, mayor, comisiones, conComision: conComision.length, meses, serie, porTipo, ventas, alquileres, nMonto: conMonto.length };
+    return { lista, concretadas, otraMoneda, enCurso, total, promedio, mayor, comisiones, comisionesPendientes, conComision: conComision.length, meses, serie, porTipo, ventas, alquileres, nMonto: conMonto.length };
   }, [operaciones, periodo, tipo, texto, moneda, estado, hoy]);
 
   const fmt = (n: number) => formatoMonto(n, moneda);
@@ -198,7 +200,7 @@ export default function PanelOperaciones({ operaciones }: { operaciones: Operaci
         <Tarjeta icon={Banknote} tono="bg-emerald-50 text-emerald-600" titulo="Monto total" valor={fmtC(datos.total)}
           detalle={datos.nMonto ? `${fmt(datos.total)} · promedio por operación ${fmt(datos.promedio)}` : 'Sin montos cargados'} />
         <Tarjeta icon={Percent} tono="bg-amber-50 text-amber-600" titulo="Comisiones" valor={fmtC(datos.comisiones)}
-          detalle={datos.conComision ? `Promedio: ${fmt(datos.comisiones / datos.conComision)}` : 'Sin comisiones cargadas'} />
+          detalle={datos.conComision ? `Pendiente de cobro: ${fmt(datos.comisionesPendientes)}` : 'Sin comisiones cargadas'} />
         <Tarjeta icon={TrendingUp} tono="bg-sky-50 text-sky-600" titulo="Promedio mensual" valor={fmtC(datos.total / datos.meses)}
           detalle={`${(datos.concretadas.length / datos.meses).toLocaleString('es-PY', { maximumFractionDigits: 1 })} operaciones por mes`} />
       </div>
@@ -283,13 +285,23 @@ export default function PanelOperaciones({ operaciones }: { operaciones: Operaci
                     {o.tipo === 'alquiler' && o.fecha_inicio && <span>Contrato {formatoFecha(o.fecha_inicio)}{o.fecha_fin ? ` → ${formatoFecha(o.fecha_fin)}` : ''}</span>}
                     {o.forma_pago && <span>{o.forma_pago}</span>}
                   </p>
+                  {o.comision !== null && (
+                    <span className={`badge mt-1.5 ${o.comision_pagada ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'}`}>
+                      <CheckCircle2 className="h-3.5 w-3.5" /> {o.comision_pagada ? `Comisión pagada${o.comision_fecha_pago ? ` · ${formatoFecha(o.comision_fecha_pago)}` : ''}` : 'Comisión pendiente de pago'}
+                    </span>
+                  )}
                   {o.estado !== 'cancelada' && (o.comision === null || !o.forma_pago) && (
                     <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-amber-700"><CircleAlert className="h-3.5 w-3.5" /> Faltan datos: {[o.comision === null && 'comisión', !o.forma_pago && 'forma de pago'].filter(Boolean).join(' y ')}</p>
                   )}
                   {o.notas && <p className="mt-1.5 line-clamp-2 text-xs text-slate-400">{o.notas}</p>}
                 </div>
-                <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
+                <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
                   <Link href={`/operaciones/${o.id}/editar`} className="btn-secondary btn-sm"><Pencil className="h-4 w-4" /> Editar</Link>
+                  {o.comision !== null && (
+                    <ConfirmForm accion="cambiarComisionPagada" args={[o.id, !o.comision_pagada]} className={o.comision_pagada ? 'btn-secondary btn-sm' : 'btn btn-sm'}>
+                      <CheckCircle2 className="h-4 w-4" /> {o.comision_pagada ? 'Marcar pendiente' : 'Marcar comisión pagada'}
+                    </ConfirmForm>
+                  )}
                   <ConfirmForm accion="eliminarOperacion" args={[o.id]} mensaje="¿Eliminar esta operación? No se puede deshacer." className="btn-danger btn-sm"><Trash2 className="h-4 w-4" /> Eliminar</ConfirmForm>
                 </div>
               </li>
