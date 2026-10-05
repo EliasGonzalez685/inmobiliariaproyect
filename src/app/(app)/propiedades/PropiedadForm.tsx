@@ -6,6 +6,7 @@ import { CATEGORIAS_FOTO, ESTADOS_PROPIEDAD, MONEDAS, OPERACIONES, SERVICIOS, TI
 import { createClient } from '@/lib/supabase/client';
 import { MAX_VIDEO_MB, subirMedia, type EstadoArchivo } from '@/lib/media';
 import ListaArchivos from '@/components/ListaArchivos';
+import CampoMonto from '@/components/CampoMonto';
 import { llamar } from '@/lib/llamar';
 
 type P = Record<string, any>;
@@ -197,7 +198,7 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
 
       <Seccion icon={Banknote} titulo="Valor y notas" tono="bg-amber-50 text-amber-600">
         {select('moneda', 'Moneda', MONEDAS)}
-        {campo('precio', 'Precio / valor', { type: 'number', step: '0.01', inputMode: 'decimal' })}
+        <CampoMonto name="precio" label="Precio / valor" defaultValue={p.precio} placeholder="0" />
         <div className="hidden lg:block" />
         {area('notas', 'Notas internas')}
       </Seccion>
