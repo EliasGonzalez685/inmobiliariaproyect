@@ -83,7 +83,8 @@ export default async function Propiedad({ params, searchParams }: { params: Prom
         <Caja icon={Landmark} tono="bg-emerald-50 text-emerald-600" titulo="Datos legales y valor" filas={[
           ['Finca N°', p.finca_nro], ['Padrón N°', p.padron_nro], ['Lote N°', p.lote_nro], ['Manzana N°', p.manzana_nro],
           ['Cta. Cte. Catastral', p.cuenta_corriente_catastral], ['Información adicional', p.informacion_adicional],
-          ['Precio / valor', p.precio ? formatoMonto(p.precio, p.moneda) : null], ['Notas', p.notas],
+          ['Precio / valor', p.precio ? formatoMonto(p.precio, p.moneda) : null],
+          ['Comisión pactada', p.comision_pactada ? formatoMonto(p.comision_pactada, p.moneda) : null], ['Notas', p.notas],
         ]} />
       </div>
   );

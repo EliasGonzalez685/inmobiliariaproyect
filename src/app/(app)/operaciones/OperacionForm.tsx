@@ -19,25 +19,37 @@ function Seccion({ icon: Icon, titulo, tono, children }: { icon: typeof FileText
 
 export default function OperacionForm({ operacion, propiedades, clientes, propiedadInicial, volverA }: {
   operacion?: Op;
-  propiedades: { id: string; titulo: string; codigo: string | null }[];
+  propiedades: { id: string; titulo: string; codigo: string | null; comision_pactada: number | null }[];
   clientes: { id: string; nombre: string }[];
   propiedadInicial?: string;
   volverA?: string;
 }) {
   const o: Op = operacion ?? {};
+  const esNueva = !o.id;
   const [res, enviar, pendiente] = useAccion('guardarOperacion', [o.id ?? null]);
   const [tipo, setTipo] = useState<string>(o.tipo ?? 'venta');
   const [propiedad, setPropiedad] = useState<string>(o.propiedad_id ?? propiedadInicial ?? '');
   const [monto, setMonto] = useState<string>(o.monto != null ? String(Number(o.monto)) : '');
-  const [comision, setComision] = useState<string>(o.comision != null ? String(Number(o.comision)) : '');
+  const comisionPactadaInicial = esNueva ? propiedades.find((p) => p.id === propiedad)?.comision_pactada ?? null : null;
+  const [comision, setComision] = useState<string>(o.comision != null ? String(Number(o.comision)) : comisionPactadaInicial != null ? String(comisionPactadaInicial) : '');
+  const [sugerida, setSugerida] = useState(comisionPactadaInicial != null);
   const [porcentaje, setPorcentaje] = useState('');
   const [comisionPagada, setComisionPagada] = useState<boolean>(o.comision_pagada ?? false);
 
   const calcularComision = (pct: string, base: string) => {
     const p = Number(pct.replace(',', '.'));
     const m = Number(base.replace(',', '.'));
-    if (pct.trim() !== '' && Number.isFinite(p) && Number.isFinite(m) && base.trim() !== '') setComision(String(Number(((m * p) / 100).toFixed(2))));
+    if (pct.trim() !== '' && Number.isFinite(p) && Number.isFinite(m) && base.trim() !== '') { setComision(String(Number(((m * p) / 100).toFixed(2)))); setSugerida(false); }
   };
+
+  // Al elegir una propiedad en una operación nueva, sugiere la comisión que se pactó al cargarla
+  // (solo si todavía no se escribió nada a mano, para no pisar lo que ya puso el usuario).
+  function elegirPropiedad(id: string) {
+    setPropiedad(id);
+    if (!esNueva) return;
+    const pactada = propiedades.find((p) => p.id === id)?.comision_pactada ?? null;
+    if (pactada != null && (comision.trim() === '' || sugerida)) { setComision(String(pactada)); setSugerida(true); }
+  }
 
   const nuevoEstado = ESTADO_POR_OPERACION[tipo];
   const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Asuncion' });
@@ -71,7 +83,7 @@ export default function OperacionForm({ operacion, propiedades, clientes, propie
         </div>
         <div className="sm:col-span-2">
           <label className="label">Propiedad</label>
-          <select className="input" name="propiedad_id" value={propiedad} onChange={(e) => setPropiedad(e.target.value)}>
+          <select className="input" name="propiedad_id" value={propiedad} onChange={(e) => elegirPropiedad(e.target.value)}>
             <option value="">— Sin propiedad —</option>
             {propiedades.map((p) => <option key={p.id} value={p.id}>{p.codigo ? `${p.codigo} · ` : ''}{p.titulo}</option>)}
           </select>

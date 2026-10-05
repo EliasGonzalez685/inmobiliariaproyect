@@ -14,18 +14,19 @@ export default async function EditarOperacion({ params, searchParams }: { params
   const [, { data: operacion }, { data: propiedades }, { data: clientes }] = await Promise.all([
     requireProfile(),
     supabase.from('operaciones').select('*').eq('id', id).single(),
-    supabase.from('propiedades').select('id, titulo, codigo').order('titulo'),
+    supabase.from('propiedades').select('id, titulo, codigo, comision_pactada').order('titulo'),
     supabase.from('clientes').select('id, nombre').order('nombre'),
   ]);
   if (!operacion) notFound();
   const volverA = volver && volver === operacion.propiedad_id ? volver : undefined;
+  const listaPropiedades = (propiedades ?? []).map((p) => ({ ...p, comision_pactada: p.comision_pactada === null ? null : Number(p.comision_pactada) }));
   return (
     <div className="space-y-5">
       <div>
         <Link href={volverA ? `/propiedades/${volverA}?tab=operaciones` : '/operaciones'} className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-brand-600"><ArrowLeft className="h-4 w-4" /> {volverA ? 'Propiedad' : 'Operaciones'}</Link>
         <h1 className="mt-1">Editar operación</h1>
       </div>
-      <OperacionForm operacion={operacion} propiedades={propiedades ?? []} clientes={clientes ?? []} volverA={volverA} />
+      <OperacionForm operacion={operacion} propiedades={listaPropiedades} clientes={clientes ?? []} volverA={volverA} />
     </div>
   );
 }

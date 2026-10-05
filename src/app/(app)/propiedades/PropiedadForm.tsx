@@ -70,6 +70,16 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
     const n = Number(v.replace(',', '.'));
     setM2(v.trim() === '' || !Number.isFinite(n) ? '' : String(Number((n * 10000).toFixed(2))));
   };
+  // Comisión pactada con el dueño: se puede escribir el % (sobre el precio cargado arriba) o el monto directo.
+  const [precio, setPrecio] = useState<number | null>(p.precio != null ? Number(p.precio) : null);
+  const [comisionPct, setComisionPct] = useState('');
+  const [comisionMonto, setComisionMonto] = useState<number | null>(p.comision_pactada != null ? Number(p.comision_pactada) : null);
+  const calcularComisionPct = (pct: string) => {
+    setComisionPct(pct);
+    const n = Number(pct.replace(',', '.'));
+    if (pct.trim() !== '' && Number.isFinite(n) && precio) setComisionMonto(Number(((precio * n) / 100).toFixed(2)));
+  };
+
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [progreso, setProgreso] = useState('');
@@ -259,8 +269,18 @@ export default function PropiedadForm({ propiedad, clientes }: { propiedad?: P; 
 
       <Seccion icon={Banknote} titulo="Valor y notas" tono="bg-amber-50 text-amber-600">
         {select('moneda', 'Moneda', MONEDAS)}
-        <CampoMonto name="precio" label="Precio / valor" defaultValue={p.precio} placeholder="0" />
+        <CampoMonto name="precio" label="Precio / valor" defaultValue={p.precio} placeholder="0" onValor={setPrecio} />
         <div className="hidden lg:block" />
+        <div>
+          <label className="label">Comisión pactada % (opcional)</label>
+          <input className="input" type="number" step="any" min="0" inputMode="decimal" placeholder="Ej.: 3" value={comisionPct} onChange={(e) => calcularComisionPct(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Comisión pactada (monto)</label>
+          <input className="input" name="comision_pactada" type="number" step="any" min="0" inputMode="decimal"
+            value={comisionMonto ?? ''} onChange={(e) => setComisionMonto(e.target.value === '' ? null : Number(e.target.value))} />
+        </div>
+        <p className="text-xs text-slate-400 sm:col-span-2 lg:col-span-3 lg:-mt-2">Lo que acordaste cobrarle al dueño cuando se venda o alquile. Queda guardado acá y se sugiere solo al registrar la operación.</p>
         {area('notas', 'Notas internas')}
       </Seccion>
 

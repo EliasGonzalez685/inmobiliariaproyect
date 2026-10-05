@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Como un <input type="number">, pero muestra el número con puntos de miles mientras se escribe
 // (ej.: "100.000"). El valor real (sin esos puntos, con coma como separador decimal) se guarda en
@@ -14,13 +14,15 @@ function formatear(crudo: string) {
   return conPuntos + parteDecimal;
 }
 
-export default function CampoMonto({ name, label, defaultValue, placeholder, required, span }: {
+export default function CampoMonto({ name, label, defaultValue, placeholder, required, span, onValor }: {
   name: string;
   label: string;
   defaultValue?: number | string | null;
   placeholder?: string;
   required?: boolean;
   span?: string;
+  /** Opcional: avisa el valor numérico actual (o null si está vacío) cada vez que cambia, para cálculos en el formulario que lo usa. */
+  onValor?: (v: number | null) => void;
 }) {
   const inicial = defaultValue === null || defaultValue === undefined || defaultValue === ''
     ? '' : formatear(String(defaultValue).replace('.', ','));
@@ -40,6 +42,13 @@ export default function CampoMonto({ name, label, defaultValue, placeholder, req
   }
 
   const valorReal = texto.replace(/\./g, ''); // lo que recibe el servidor: sin puntos de miles
+
+  useEffect(() => {
+    if (!onValor) return;
+    const n = Number(valorReal.replace(',', '.'));
+    onValor(valorReal.trim() === '' || !Number.isFinite(n) ? null : n);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valorReal]);
 
   return (
     <div className={span}>

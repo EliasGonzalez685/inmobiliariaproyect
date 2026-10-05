@@ -61,6 +61,7 @@ export async function guardarPropiedad(id: string | null, formData: FormData): P
     cuenta_corriente_catastral: txt(formData.get('cuenta_corriente_catastral')),
     informacion_adicional: txt(formData.get('informacion_adicional')),
     precio: num(formData.get('precio')),
+    comision_pactada: num(formData.get('comision_pactada')),
     moneda: String(formData.get('moneda') ?? 'PYG'),
     notas: txt(formData.get('notas')),
   };
